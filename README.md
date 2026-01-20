@@ -53,7 +53,7 @@ python manage.py migrate
 ```
 
 Esto creará la base de datos y cargará:
-- Los 26 estudiantes del curso
+- Los 29 estudiantes del curso
 - Las 10 competencias predefinidas
 
 ### 5. Ejecutar el servidor
