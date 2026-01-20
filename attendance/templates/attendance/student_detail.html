@@ -11,29 +11,38 @@
 
     <div class="student-info-section">
         <div class="info-card">
-            <h3 class="section-subtitle">📧 Información de contacto</h3>
+            <div class="card-header-actions"
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 class="section-subtitle" style="margin-bottom: 0;">📧 Información de contacto</h3>
+                <button class="btn btn-sm btn-primary" id="saveProfileBtn">
+                    <span class="btn-text">💾 Guardar</span>
+                    <span class="btn-loading" style="display: none;">Guardando...</span>
+                </button>
+            </div>
             <div class="info-grid">
                 <div class="info-item">
-                    <span class="info-label">Email</span>
-                    <span class="info-value">
-                        {% if student.email %}
-                        <a href="mailto:{{ student.email }}">{{ student.email }}</a>
-                        {% else %}
-                        <span class="text-muted">No registrado</span>
-                        {% endif %}
-                    </span>
+                    <label for="studentEmail" class="info-label"
+                        style="display: block; margin-bottom: 0.5rem;">Email</label>
+                    <input type="email" id="studentEmail" class="form-input"
+                        value="{{ student.email|default_if_none:'' }}" placeholder="ejemplo@eafit.edu.co"
+                        style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); border-radius: 4px;">
                 </div>
                 <div class="info-item">
-                    <span class="info-label">GitHub</span>
-                    <span class="info-value">
-                        {% if student.github_username %}
-                        <a href="https://github.com/{{ student.github_username }}" target="_blank" class="github-link">
-                            @{{ student.github_username }}
-                        </a>
-                        {% else %}
-                        <span class="text-muted">No registrado</span>
-                        {% endif %}
-                    </span>
+                    <label for="studentGithub" class="info-label"
+                        style="display: block; margin-bottom: 0.5rem;">GitHub</label>
+                    <div class="input-group" style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span class="input-prefix" style="color: var(--text-muted);">@</span>
+                        <input type="text" id="studentGithub" class="form-input"
+                            value="{{ student.github_username|default_if_none:'' }}" placeholder="usuario"
+                            style="flex: 1; padding: 0.5rem; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); border-radius: 4px;">
+                    </div>
+                    {% if student.github_username %}
+                    <a href="https://github.com/{{ student.github_username }}" target="_blank" class="github-link-small"
+                        id="githubLinkPreview"
+                        style="display: inline-block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--primary-color);">
+                        Ver perfil <span class="external-icon">↗</span>
+                    </a>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -96,15 +105,32 @@
 {% block extra_js %}
 <script>
     const STUDENT_ID = {{ student.id }};
-    const SAVE_URL = '/student/' + STUDENT_ID + '/competencies/save/';
+    const SAVE_COMPETENCIES_URL = '/student/' + STUDENT_ID + '/competencies/save/';
+    const UPDATE_PROFILE_URL = '/student/' + STUDENT_ID + '/update/';
+
+    function showToast(message, type = 'success') {
+        const toast = document.getElementById('toast');
+        const toastMessage = toast.querySelector('.toast-message');
+
+        toastMessage.textContent = message;
+        toast.className = 'toast show ' + type;
+
+        // Colores y iconos según tipo
+        if (type === 'success') toast.style.backgroundColor = 'var(--success-color)';
+        if (type === 'error') toast.style.backgroundColor = 'var(--danger-color)';
+
+        setTimeout(() => {
+            toast.className = 'toast';
+        }, 3000);
+    }
 
     document.addEventListener('DOMContentLoaded', function () {
-        const saveBtn = document.getElementById('saveCompetencies');
-
-        if (saveBtn) {
-            saveBtn.addEventListener('click', async function () {
-                const btnText = saveBtn.querySelector('.btn-text');
-                const btnLoading = saveBtn.querySelector('.btn-loading');
+        // --- Guardar Competencias ---
+        const saveCompetenciesBtn = document.getElementById('saveCompetencies');
+        if (saveCompetenciesBtn) {
+            saveCompetenciesBtn.addEventListener('click', async function () {
+                const btnText = saveCompetenciesBtn.querySelector('.btn-text');
+                const btnLoading = saveCompetenciesBtn.querySelector('.btn-loading');
 
                 const checkboxes = document.querySelectorAll('.competency-checkbox');
                 const competenciesData = {};
@@ -116,10 +142,10 @@
 
                 btnText.style.display = 'none';
                 btnLoading.style.display = 'inline';
-                saveBtn.disabled = true;
+                saveCompetenciesBtn.disabled = true;
 
                 try {
-                    const response = await fetch(SAVE_URL, {
+                    const response = await fetch(SAVE_COMPETENCIES_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ competencies: competenciesData })
@@ -128,7 +154,7 @@
                     const result = await response.json();
 
                     if (result.success) {
-                        showToast('✓ ' + result.message, 'success');
+                        showToast('✓ Competencias guardadas', 'success');
                     } else {
                         showToast('Error: ' + (result.error || 'No se pudo guardar'), 'error');
                     }
@@ -138,7 +164,60 @@
                 } finally {
                     btnText.style.display = 'inline';
                     btnLoading.style.display = 'none';
-                    saveBtn.disabled = false;
+                    saveCompetenciesBtn.disabled = false;
+                }
+            });
+        }
+
+        // --- Guardar Perfil (Email/Github) ---
+        const saveProfileBtn = document.getElementById('saveProfileBtn');
+        if (saveProfileBtn) {
+            saveProfileBtn.addEventListener('click', async function () {
+                const btnText = saveProfileBtn.querySelector('.btn-text');
+                const btnLoading = saveProfileBtn.querySelector('.btn-loading');
+
+                const email = document.getElementById('studentEmail').value;
+                const github = document.getElementById('studentGithub').value;
+
+                btnText.style.display = 'none';
+                btnLoading.style.display = 'inline';
+                saveProfileBtn.disabled = true;
+
+                try {
+                    const response = await fetch(UPDATE_PROFILE_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: email,
+                            github_username: github
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        showToast('✓ Perfil actualizado', 'success');
+                        // Actualizar enlace de preview si existe/cambia
+                        const previewLink = document.getElementById('githubLinkPreview');
+                        if (result.github_username) {
+                            if (previewLink) {
+                                previewLink.href = 'https://github.com/' + result.github_username;
+                                previewLink.innerHTML = 'Ver perfil <span class="external-icon">↗</span>';
+                            } else {
+                                // Crear si no existe (opcional, o recargar)
+                                // Por simplicidad, recargar la página es una opción, pero ya que es AJAX mejor no.
+                            }
+                        }
+                    } else {
+                        showToast('Error: ' + (result.error || 'No se pudo guardar'), 'error');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    showToast('Error al guardar', 'error');
+                } finally {
+                    btnText.style.display = 'inline';
+                    btnLoading.style.display = 'none';
+                    saveProfileBtn.disabled = false;
                 }
             });
         }

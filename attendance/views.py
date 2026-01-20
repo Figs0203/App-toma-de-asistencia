@@ -294,6 +294,34 @@ def save_student_competencies(request, student_id):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
+@csrf_exempt
+@require_http_methods(["POST"])
+def update_student_profile(request, student_id):
+    """API endpoint para actualizar datos del perfil del estudiante (email, github)."""
+    try:
+        student = get_object_or_404(Student, id=student_id)
+        data = json.loads(request.body)
+        
+        email = data.get('email', '').strip()
+        github_username = data.get('github_username', '').strip()
+        
+        # Actualizar campos
+        student.email = email if email else None
+        student.github_username = github_username if github_username else None
+        student.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Información actualizada correctamente',
+            'email': student.email,
+            'github_username': student.github_username
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Datos inválidos'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
 def students_manage(request):
     """Vista para gestionar estudiantes (añadir/retirar)."""
     if request.method == 'POST':
